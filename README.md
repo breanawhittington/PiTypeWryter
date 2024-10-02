@@ -1,109 +1,122 @@
-# PiTypeWryter
-distraction free writing tool - use raspberry pi &amp; a kindle (or anything that is able to display a browser)
+#PiTypeWryter
+Combination of code between TypeWryter & PiWrite. Creating a distraction free writing enviroment that a kindle can be used as the screen. 
 
-Direct inspiration from the following:
-PiWrite
-TypeWryter
-ZeroWriter
+Sources:
+(https://github.com/RyWhal/TypeWryter)
+(https://github.com/rberenguel/PiWrite)
 
-This project consists of less hands-on hardware work. You can use a Kindle (and possible any tablet that has a browser) and a keyboard to use a simple distraction free text editor. 
+# TypeWryter
+TypeWryter is a terminal application designed for distraction free writing. It doesn't allow any fancy editing. You can write and you can backspace, thats it; preventing the urge to go back and edit. Files save on every carriage return.
 
-I will attempt to explain steps as detailed as possible. I am not incredibly talented with this stuff (hence why I am using other's codes and chatgbt to figure it all out.)
+#PiWrite
+#### What?
+
+Have you ever wanted to use your Kindle Paperwhite to write, even more, with a vim-like editor? This is what PiWrite is for.
+
+#### How?
+
+The TL;DR is _a webserver running somewhere a keyboard can be plugged, and a page opened in the Kindle's web browser_.
+
+The not-so-short version requires more effort and details, but is the UX I wanted to get:
+
+- A **Raspberry Pi Zero W**…
+- Paired with a **Bluetooth keyboard**…
+- Set up in **access point mode**…
+- With **this package** installed…
+- And configured to **start automatically** on boot.
+
+#### Why?
+
+I was inspired by [SolarWriter by Michael Solomon](https://solarwriter.msol.io). I had always wanted to use my Kindle for writing. SolarWriter solves that by setting up a local web server on your phone (iOS or Android), then you type with a Bluetooth keyboard paired with it. But you need to set up hotspot, keep your screen on… I didn't like those parts. So I wrote this.
 
 
-# Install Raspian OS to your micro sd card for your Raspberry PI
-https://github.com/zerowriter/zerowriter1/blob/main/how-to-setup-your-pi has amazing directions on how to do this step by step - including some of the ssh information. It's great for those who need a little more guidance. The final program doesn't use the official clone of the git for zerowriter - however shout out to zerowriter for being one of the main reasons that typewryter exists, and then this. 
+This code is a heavily modified version of [zerowriter](https://github.com/zerowriter/zerowriter1/tree/main) since they had a very good head start on developing this sort of project. Their project is awesome, but is a little different and will have a somewhat different featureset.  
+ 
+## Getting Started
+1. Set up Raspberry Pi with Waveshare 4.1in epaper display - [More info available on Waveshare's Website](https://www.waveshare.com/wiki/4.2inch_e-Paper_Module_(B)_Manual#Overview)
+2. Update apt: `sudo apt update`
+3. Upgrade available packages: `sudo apt upgrade`
+4. Update apt-get packages: `sudo apt-get update`
+5. [Enable the SPI interface on your Raspberry Pi](https://www.waveshare.com/wiki/4.2inch_e-Paper_Module_(B)_Manual#Enable_SPI_Interface)
+   * `sudo raspi-config`
+   * Choose Interfacing Options -> SPI -> Yes Enable SPI interface
+   * `sudo reboot now`
+   * Check `/boot/config.txt`, and you can see 'dtparam=spi=on' was written in.
+6. Install The following (E-Paper Dependencies):
+```
+sudo apt-get install python3-pip
+sudo apt-get install python3-pil
+sudo apt-get install python3-numpy
+sudo pip3 install RPi.GPIO
+sudo pip3 install spidev
+sudo apt install python3-gpiozero
+```
+7. Install QRcode: `sudo pip3 install qrcode`
+8. Install Flask: `pip3 install Flask`
+9. Install Keyboard: `sudo pip3 install keyboard`
+10. Clone this repo. `git clone https://github.com/RyWhal/TypeWryter.git`
+11. Run it from the TypeWrytes directory with: `sudo python main.py`
 
-I just used the Raspberry Pi Imager. I did the debian bookworm lite 32bit with the desktop just in case. I am using a Raspberry PI Zero W for this set up. The first round is a test set up for my husband. I have no idea if it is enough or not, but it does have wifi & bluetooth - which I need.
+Optional:
+1. Install the Pi-Sugar tools, including battery monitor: `curl http://cdn.pisugar.com/release/pisugar-power-manager.sh | sudo bash`
 
-I set up the name for my pi, user info, and wifi account to try to make my life easier.
+# OS
+I used Raspberry Pi OS (64-bit) Lite.
+You can use whatever you want, but you may have to tweak minor things. 
 
-# SSH into your Pi
-I connected my pi to my computer via usb. https://github.com/zerowriter/zerowriter1/blob/main/how-to-setup-your-pi has amazing directions on how to do this step by step. If you haven't done this before - when the pi is powered on it can take a few minutes to boot up. I'm not sure how fast other non zero w pis are, but the zero w can take like 3+ minutes at times.
+# Start on boot
+You can use whatever method you want to make the application on boot (crontab, rc.local, etc.). I chose to set the application up as a systemd service.
 
+/etc/systemd/system/typewryter.service:
 ```
-ssh pi@[hostname].local
-```
-OR 
+[Unit]
+Description=TypeWryter free write service
+After=multi-user.target
 
-use the pi ip address. I found mine by logging into my router, and looked at devices attached to my router.  
-```
-ssh pi@[pi IP address]
-```
+[Service]
+Type=idle
+WorkingDirectory=/home/logmein/TypeWryter
+ExecStart=/usr/bin/python3 /home/logmein/TypeWryter/main.py
+RuntimeDirectory=TypeWryter
+ProtectSystem=full
+StandardOutput=append:/var/log/TypeWryter/systemd_output.log
+StandardError=inherit
 
-# Making pi a wireless access point
-^ NOTE: If you are using a pi that doesn't have an ethernet port, or not planning to use ethernet, you likely will want to install the program before making the pi a wireless access point. I had issues because when I made my pi finally be an access point I couldn't ssh in it via wifi - which make sense but also is a pain. 
-
-first - always want to do the upgrade stuff to your pi. 
-
-```
-sudo apt update
-```
-```
-sudo sudo apt-get update
-```
-
-Get the access point and DNS services needed
-```
-sudo apt install hostapd dnsmasq
-```
-
-Start them
-```
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
-```
-
-Edit `/etc/dhcpcd.conf`and add 
-```
-sudo nano /etc/dhcpcd.conf
-```
-add to file
-```
-interface wlan0
-    static ip_address=192.168.11.1/24
-    nohook wpa_supplicant
-```
-next step
-
-```
-sudo nano /etc/dnsmasq.conf
-```
-
-add to file - I just added it to the end of the file since everything was commented out.
-```
-interface=wlan0 # Listening interface
-dhcp-range=192.168.11.2,192.168.11.20,255.255.255.0,24h
-                # Pool of IP addresses served via DHCP
-domain=write     # Local wireless DNS domain
-address=/pi/192.168.11.1
-                # Alias for this router
-```
-Config the next file:
-```
-sudo nano /etc/hostapd/hostapd.conf
-```
-add to fie
-```
-country_code=US
-interface=wlan0
-ssid=PiTypeWryter
-hw_mode=g
-channel=7
-macaddr_acl=0
-auth_algs=1
-ignore_broadcast_ssid=0
-wpa=2
-wpa_passphrase=CHOOSE SOMETHING
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
-rsn_pairwise=CCMP
+[Install]
+WantedBy=multi-user.target
 ```
 
-After this set up - reboot the pi.
-```
-sudo shutdown -r now or sudo systemctl reboot
-````
-In theory your pi access point should be set up and ready to go. You are supoose to be able to see it in your networks (wifi networks).
-If you have issues with the set up - I just check with ChatGPT cause I ain't got time for that. I had to use the correct usb cord to propery ssh into my pi without internet. 
+After you create the service you run:
+
+* `sudo systemctl daemon-reload` --> to reload the systemctl daemon to include your new service
+* `sudo systemctl enable typewryter.service` --> to enable the service on boot
+* `sudo systemctl start typewryter.service` --> to start TypeWryter
+* `sudo systemctl restart typewryter.service` --> to restart TypeWryter
+* `sudo systemctl status typewryter.service` --> to check service status
+
+## Known Issues and limitations
+
+1. Unable to connect to wifi-networks from within the TypeWrytes application*
+2. Unable to connect to bluetooth devices from within the TypeWrytes application*
+4. Scrolling back in text history is not working.
+5. You cant rename a writing session.
+
+*note: This application is meant to act almost as the OS for my WriterDeck, FreeWrite, TypeWryter, whatever. The plan is for the Raspberry Pi to boot straight into this software when you turn it on. So the software needs to handle some of the things the OS would usually handle. These things that I cant do yet (wifi, bluetooth) only matter if you're not doing them ahead of time in the OS. 
+
+
+## Browsing files on the local network
+If you navigate to Menu --> Network File Browser --> Start Server
+A local Flask webserver will spin up on whatever device is running TypeWryter (note the Flask package must be installed on your machine via `pip install Flask`)
+TypeWryter will present you with a url, QR code, and  4 digit password. You can either visit the URL, or Scan the QR code,  and then enter the password to see the files on your TypeWryter.
+
+
+## Parts list for my device:
+1. Raspberry Pi Zero 2W -  https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/
+2. 4 inch E-ink display -  https://www.amazon.com/gp/product/B074NR1SW2
+3. External battery - https://www.amazon.com/gp/product/B08D678XPR
+4. Case - modeled in Fusion 360 and 3D printed. I'll share the STL files once they're finalized.
+
+
+
+
 
