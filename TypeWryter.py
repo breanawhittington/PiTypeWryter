@@ -72,7 +72,7 @@ class Menu:
 class TypeWryter:
     def __init__(self):
 
-        #modifying thesde will mess up how text displays
+        #modifying these will mess up how text displays
         self.chars_per_line = 50 
         self.lines_on_screen = 15 
         self.font_size = 13
@@ -727,30 +727,3 @@ class TypeWryter:
     def run(self):
         while True:
             self.loop()
-
-import pygame
-
-# Initialize pygame
-pygame.init()
-
-# Set up the display
-screen = pygame.display.set_mode((800, 600))
-
-# Set the title of the window
-pygame.display.set_caption("TypeWryter")
-
-# Main loop
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    # Fill the screen with white
-    screen.fill((255, 255, 255))
-
-    # Update the display
-    pygame.display.update()
-
-# Quit pygame
-pygame.quit()
