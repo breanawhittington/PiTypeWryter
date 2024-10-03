@@ -1,6 +1,6 @@
 import time
 import keyboard
-from waveshare_epd import epd4in2_V2
+#from waveshare_epd import epd4in2_V2
 
 from TypeWryter import TypeWryter
 
@@ -9,7 +9,7 @@ from TypeWryter import TypeWryter
 type_wryter = TypeWryter()
 
 try:
-  type_wryter.epd = epd4in2_V2.EPD() 
+#  type_wryter.epd = epd4in2_V2.EPD() 
   type_wryter.keyboard = keyboard
   type_wryter.ensure_sub_dirs()
   type_wryter.initialize()
@@ -20,7 +20,7 @@ except KeyboardInterrupt:
 
 finally:
     keyboard.unhook_all()
-    type_wryter.epd.init()
+ #   type_wryter.epd.init()
     time.sleep(1)
     type_wryter.epd.Clear()
     type_wryter.epd.sleep()
